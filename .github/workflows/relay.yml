@@ -4,6 +4,7 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
   relay:
@@ -14,25 +15,19 @@ jobs:
           docker pull vxcontrol/pentagi:latest
           docker pull vxcontrol/pgvector:latest
 
-      - name: Save, compress and split
+      - name: Tag for GHCR
         run: |
-          docker save vxcontrol/pentagi:latest | gzip -6 > pentagi.tar.gz
-          docker save vxcontrol/pgvector:latest | gzip -6 > pgvector.tar.gz
-          for f in pentagi pgvector; do
-            if [ -f "$f.tar.gz" ] && [ "$(stat -c%s $f.tar.gz)" -gt 1900000000 ]; then
-              split -b 1500m "$f.tar.gz" "$f.tar.gz.part_"
-              rm -f "$f.tar.gz"
-            fi
-          done
-          ls -lh
+          docker tag vxcontrol/pentagi:latest ghcr.io/${{ github.repository_owner }}/pentagi:latest
+          docker tag vxcontrol/pgvector:latest ghcr.io/${{ github.repository_owner }}/pgvector:latest
 
-      - name: Upload to Release
-        uses: softprops/action-gh-release@v2
+      - name: Login to GHCR
+        uses: docker/login-action@v3
         with:
-          tag_name: images-v1
-          name: pentagi-images
-          files: |
-            *.tar.gz
-            *.part_*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push to GHCR
+        run: |
+          docker push ghcr.io/${{ github.repository_owner }}/pentagi:latest
+          docker push ghcr.io/${{ github.repository_owner }}/pgvector:latest
