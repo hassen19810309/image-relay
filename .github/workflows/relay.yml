@@ -1,0 +1,35 @@
+name: docker-image-relay
+on:
+  workflow_dispatch:
+
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull images from Docker Hub
+        run: |
+          docker pull vxcontrol/pentagi:latest
+          docker pull vxcontrol/pgvector:latest
+
+      - name: Save, compress and split
+        run: |
+          docker save vxcontrol/pentagi:latest | gzip -6 > pentagi.tar.gz
+          docker save vxcontrol/pgvector:latest | gzip -6 > pgvector.tar.gz
+          for f in pentagi pgvector; do
+            if [ -f "$f.tar.gz" ] && [ "$(stat -c%s $f.tar.gz)" -gt 1900000000 ]; then
+              split -b 1500m "$f.tar.gz" "$f.tar.gz.part_"
+              rm -f "$f.tar.gz"
+            fi
+          done
+          ls -lh
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: images-v1
+          name: pentagi-images
+          files: |
+            *.tar.gz
+            *.part_*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
