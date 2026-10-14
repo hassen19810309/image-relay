@@ -2,6 +2,9 @@ name: docker-image-relay
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   relay:
     runs-on: ubuntu-latest
